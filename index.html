@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASG 2027 L&D Work Plan - Interactive Quiz</title>
+<style>
+  :root{
+    --green:#1b5e20; --green-mid:#2e7d32; --green-light:#e8f3e9;
+    --gold:#c9a227; --gold-soft:#f7efd2;
+    --ink:#20301f; --muted:#5c6b5a;
+    --red:#c62828; --red-soft:#fdecea;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:linear-gradient(160deg,#f3f7f0 0%,#e8f0e4 100%);
+    color:var(--ink); min-height:100vh; display:flex; justify-content:center;
+    padding:24px 16px 60px;
+  }
+  .app{width:100%; max-width:720px;}
+  header{text-align:center; margin-bottom:22px;}
+  .eyebrow{letter-spacing:2px; font-size:12px; color:var(--gold); font-weight:700; text-transform:uppercase;}
+  h1{font-size:clamp(24px,4vw,34px); color:var(--green); margin:6px 0 4px;}
+  .sub{color:var(--muted); font-size:14px;}
+  .card{
+    background:#fff; border-radius:16px; padding:26px 26px 30px;
+    box-shadow:0 10px 30px rgba(27,94,32,.10); border:1px solid #e3ecdf;
+  }
+  .progress-wrap{display:flex; align-items:center; gap:12px; margin-bottom:18px;}
+  .progress{flex:1; height:8px; background:var(--green-light); border-radius:99px; overflow:hidden;}
+  .progress > div{height:100%; width:0%; background:linear-gradient(90deg,var(--green-mid),var(--gold)); transition:width .35s ease;}
+  .count{font-size:13px; color:var(--muted); white-space:nowrap;}
+  .kicker{font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:8px;}
+  .question{font-size:19px; line-height:1.45; font-weight:600; margin-bottom:18px;}
+  .options{display:grid; gap:10px;}
+  .opt{
+    text-align:left; width:100%; padding:14px 16px; border-radius:12px;
+    border:2px solid #dfe8da; background:#fbfdfb; font-size:15px; line-height:1.4;
+    cursor:pointer; transition:border-color .15s, background .15s, transform .05s;
+    color:var(--ink);
+  }
+  .opt:hover:not(:disabled){border-color:var(--green-mid); background:var(--green-light);}
+  .opt:active:not(:disabled){transform:scale(.995);}
+  .opt .letter{
+    display:inline-flex; width:24px; height:24px; border-radius:50%;
+    align-items:center; justify-content:center; font-size:12px; font-weight:700;
+    background:#eef4ea; color:var(--green); margin-right:10px; vertical-align:middle;
+  }
+  .opt.correct{border-color:var(--green-mid); background:var(--green-light);}
+  .opt.correct .letter{background:var(--green-mid); color:#fff;}
+  .opt.wrong{border-color:var(--red); background:var(--red-soft);}
+  .opt.wrong .letter{background:var(--red); color:#fff;}
+  .opt.dim{opacity:.55;}
+  .opt:disabled{cursor:default;}
+  .feedback{
+    margin-top:16px; padding:14px 16px; border-radius:12px; font-size:14px; line-height:1.5;
+    display:none;
+  }
+  .feedback.show{display:block;}
+  .feedback.good{background:var(--green-light); border:1px solid #cfe3cf;}
+  .feedback.bad{background:var(--red-soft); border:1px solid #f3cfc9;}
+  .feedback b.tag{display:block; margin-bottom:4px;}
+  .feedback.good b.tag{color:var(--green);}
+  .feedback.bad b.tag{color:var(--red);}
+  .next-row{margin-top:18px; text-align:right; min-height:44px;}
+  .btn{
+    background:var(--green); color:#fff; border:none; padding:12px 26px; border-radius:99px;
+    font-size:15px; font-weight:600; cursor:pointer; transition:background .15s;
+  }
+  .btn:hover{background:var(--green-mid);}
+  .btn.gold{background:var(--gold); color:#3a2f05;}
+  .btn.gold:hover{background:#b8931f;}
+  .hidden{display:none;}
+  /* results */
+  .score-ring{
+    width:150px; height:150px; border-radius:50%; margin:8px auto 16px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 40%, #ffffff 60%, transparent 61%), conic-gradient(var(--green-mid) var(--pct,0%), #e6eddf 0);
+    box-shadow:inset 0 0 0 1px #dde7d8;
+  }
+  .score-num{font-size:36px; font-weight:800; color:var(--green);}
+  .score-of{font-size:13px; color:var(--muted);}
+  .verdict{text-align:center; font-size:16px; margin-bottom:18px; line-height:1.5;}
+  .review{margin-top:20px; text-align:left; display:grid; gap:8px;}
+  .review .r-item{font-size:13px; padding:10px 12px; border-radius:10px; line-height:1.45;}
+  .r-item.ok{background:var(--green-light);}
+  .r-item.no{background:var(--red-soft);}
+  .center{text-align:center;}
+  footer{margin-top:18px; text-align:center; font-size:12px; color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="eyebrow">Agung Sedayu Group &middot; Learning &amp; Development</div>
+    <h1>2027 L&amp;D Work Plan Quiz</h1>
+    <div class="sub">10 questions &middot; instant marking &middot; good luck</div>
+  </header>
+
+  <div class="card" id="quiz-card">
+    <div class="progress-wrap">
+      <div class="progress"><div id="bar"></div></div>
+      <div class="count" id="count">1 / 10</div>
+    </div>
+    <div class="kicker" id="kicker">Question 1</div>
+    <div class="question" id="question"></div>
+    <div class="options" id="options"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="next-row"><button class="btn hidden" id="next">Next &rarr;</button></div>
+  </div>
+
+  <div class="card hidden" id="result-card">
+    <div class="center">
+      <div class="score-ring" id="ring">
+        <div class="score-num" id="score-num">0</div>
+        <div class="score-of">out of 10</div>
+      </div>
+      <div class="verdict" id="verdict"></div>
+      <button class="btn gold" id="restart">Try again</button>
+    </div>
+    <div class="review" id="review"></div>
+  </div>
+
+  <footer>Built from the ASG 2027 Learning &amp; Development Work Plan</footer>
+</div>
+
+<script>
+const QUIZ = [
+  {
+    q: "What is the main goal of the Agung Sedayu 2027 L&D Work Plan?",
+    options: [
+      "Cutting training costs across the Group",
+      "Building leadership capability and sharing knowledge across the Group",
+      "Replacing external training vendors with online courses",
+      "Launching a new performance rating system"
+    ],
+    answer: 1,
+    why: "The plan is about building leadership capability and sharing knowledge across the Group."
+  },
+  {
+    q: "Which of these is NOT one of the three candidate priorities for L&D in 2027?",
+    options: [
+      "Leadership bench readiness",
+      "Smoother handovers of critical responsibilities",
+      "Retaining operating knowledge",
+      "Digitising all HR paperwork"
+    ],
+    answer: 3,
+    why: "The three candidate priorities are leadership bench readiness, smoother handovers, and retaining operating knowledge."
+  },
+  {
+    q: "The 2027 plan is organised into four workstreams. Which workstream has GMs coach Senior Managers through live stretch assignments and difficult decisions?",
+    options: [
+      "Leadership development",
+      "Coaching",
+      "Reverse mentoring",
+      "Knowledge management"
+    ],
+    answer: 1,
+    why: "In the Coaching workstream, GMs coach Senior Managers on real work, building judgement through live assignments."
+  },
+  {
+    q: "What is the purpose of reverse mentoring in the plan?",
+    options: [
+      "Senior leaders teach company history to new joiners",
+      "Younger colleagues share digital practices that senior leaders want to apply",
+      "Directors assess the performance of junior staff",
+      "New hires review the Group's IT systems"
+    ],
+    answer: 1,
+    why: "Reverse mentoring pairs younger colleagues with senior leaders to share digital-native practices."
+  },
+  {
+    q: "All four workstreams are built on a set of shared capabilities. Which of these is NOT one of them?",
+    options: [
+      "Communication",
+      "Collaboration",
+      "Technical certification",
+      "Developing others"
+    ],
+    answer: 2,
+    why: "The four shared capabilities are Communication, Collaboration, Problem-solving & decision-making, and Developing others."
+  },
+  {
+    q: "In the quarterly phasing, what is Q1 (Jan-Mar) focused on, and what is its deliverable?",
+    options: [
+      "Run the pilot; pilot readout and early evidence",
+      "Listen & design; agreed pilot scope at the mid-February review",
+      "Apply & extend; application evidence at 30/60/90 days",
+      "Review & decide; year-end review feeding 2028 planning"
+    ],
+    answer: 1,
+    why: "Q1 is 'Listen & design': stakeholder interviews and HR data, ending in an agreed pilot scope at the mid-February review."
+  },
+  {
+    q: "What quick win is planned for February, within the first 90 days?",
+    options: [
+      "A leadership offsite for all Directors",
+      "The launch of the nine-box talent grid",
+      "The first peer-led case-sharing session, led by a respected GM",
+      "An external vendor selection for e-learning"
+    ],
+    answer: 2,
+    why: "February's quick win is the first peer-led case-sharing session - near-zero cost, high visibility."
+  },
+  {
+    q: "How will the Group know the pilot is working?",
+    options: [
+      "Only through the year-end engagement survey",
+      "Participation in sessions, observed on-the-job application at 30/60/90 days, and one business KPI tied to the chosen priority",
+      "The number of training hours per employee",
+      "Completion rates on online courses"
+    ],
+    answer: 1,
+    why: "Success is measured by participation and engagement, observed application at 30/60/90 days confirmed by the manager or sponsor, and one agreed business KPI."
+  },
+  {
+    q: "Under the governance model, who do decisions rest with?",
+    options: [
+      "The GM Talent Acquisition",
+      "The executive sponsor alone",
+      "The CHRO and COO",
+      "An external advisory board"
+    ],
+    answer: 2,
+    why: "Governance includes a named executive sponsor and a monthly check-in with GM People & Organisation Development, with decisions resting with the CHRO and COO."
+  },
+  {
+    q: "The main sessions are planned around Indonesia's 2027 calendar. Which periods do they avoid?",
+    options: [
+      "8-15 March (Nyepi / Idulfitri) and 17-20 May (Iduladha / Waisak)",
+      "The whole of April and October",
+      "Every Friday afternoon",
+      "1-7 January and 24-31 December"
+    ],
+    answer: 0,
+    why: "Main sessions avoid 8-15 March (Nyepi / Idulfitri) and 17-20 May (Iduladha / Waisak); 5 January is also a holiday."
+  }
+];
+
+let idx = 0, score = 0, answered = false;
+const results = [];
+
+const qEl = document.getElementById('question');
+const optsEl = document.getElementById('options');
+const fbEl = document.getElementById('feedback');
+const nextBtn = document.getElementById('next');
+const barEl = document.getElementById('bar');
+const countEl = document.getElementById('count');
+const kickerEl = document.getElementById('kicker');
+const quizCard = document.getElementById('quiz-card');
+const resultCard = document.getElementById('result-card');
+
+function render(){
+  answered = false;
+  const item = QUIZ[idx];
+  kickerEl.textContent = "Question " + (idx+1);
+  countEl.textContent = (idx+1) + " / " + QUIZ.length;
+  barEl.style.width = ((idx) / QUIZ.length * 100) + "%";
+  qEl.textContent = item.q;
+  fbEl.className = "feedback";
+  fbEl.innerHTML = "";
+  nextBtn.classList.add('hidden');
+  optsEl.innerHTML = "";
+  item.options.forEach((text, i) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.innerHTML = '<span class="letter">' + String.fromCharCode(65+i) + '</span>' + text;
+    b.addEventListener('click', () => choose(i, b));
+    optsEl.appendChild(b);
+  });
+}
+
+function choose(i, btn){
+  if (answered) return;
+  answered = true;
+  const item = QUIZ[idx];
+  const buttons = optsEl.querySelectorAll('.opt');
+  const correct = i === item.answer;
+  buttons.forEach((b, j) => {
+    b.disabled = true;
+    if (j === item.answer) b.classList.add('correct');
+    else if (j === i) b.classList.add('wrong');
+    else b.classList.add('dim');
+  });
+  if (correct) score++;
+  results.push({q: item.q, ok: correct, picked: item.options[i], right: item.options[item.answer]});
+  fbEl.className = "feedback show " + (correct ? "good" : "bad");
+  fbEl.innerHTML = '<b class="tag">' + (correct ? "Correct!" : "Not quite - the answer is: " + item.options[item.answer]) + '</b>' + item.why;
+  barEl.style.width = ((idx+1) / QUIZ.length * 100) + "%";
+  nextBtn.textContent = (idx === QUIZ.length - 1) ? "See my results" : "Next \u2192";
+  nextBtn.classList.remove('hidden');
+}
+
+nextBtn.addEventListener('click', () => {
+  if (idx < QUIZ.length - 1) { idx++; render(); }
+  else showResults();
+});
+
+function showResults(){
+  quizCard.classList.add('hidden');
+  resultCard.classList.remove('hidden');
+  const pct = Math.round(score / QUIZ.length * 100);
+  document.getElementById('score-num').textContent = score;
+  document.getElementById('ring').style.setProperty('--pct', pct + '%');
+  let msg;
+  if (score === QUIZ.length) msg = "Perfect score - you know the 2027 plan inside out.";
+  else if (score >= 8) msg = "Strong grasp of the plan - just a detail or two to revisit.";
+  else if (score >= 5) msg = "Good start - worth another read of the work plan deck.";
+  else msg = "The deck has the answers - give it a skim and try again.";
+  document.getElementById('verdict').textContent = msg;
+  const review = document.getElementById('review');
+  review.innerHTML = "";
+  results.forEach((r, n) => {
+    const d = document.createElement('div');
+    d.className = 'r-item ' + (r.ok ? 'ok' : 'no');
+    d.innerHTML = '<b>Q' + (n+1) + '.</b> ' + r.q + '<br>' +
+      (r.ok ? 'You answered correctly: ' + r.right
+            : 'You picked: ' + r.picked + '<br>Correct answer: ' + r.right);
+    review.appendChild(d);
+  });
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+document.getElementById('restart').addEventListener('click', () => {
+  idx = 0; score = 0; results.length = 0;
+  resultCard.classList.add('hidden');
+  quizCard.classList.remove('hidden');
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
